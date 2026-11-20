@@ -1,0 +1,16 @@
+# Piezas descargadas y archivos generados
+node_modules
+.next
+out
+.vercel
+next-env.d.ts
+*.tsbuildinfo
+
+# Claves y datos privados: NUNCA se suben
+.env
+.env.*
+!.env.example
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

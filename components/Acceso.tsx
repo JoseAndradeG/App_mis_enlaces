@@ -1,0 +1,115 @@
+"use client";
+
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+function traducir(msg: string): string {
+  if (/invalid login/i.test(msg)) return "Correo o contraseña incorrectos.";
+  if (/already registered/i.test(msg)) return "Ese correo ya tiene una cuenta. Inicia sesión.";
+  if (/not confirmed/i.test(msg)) return "Primero confirma tu correo (revisa tu bandeja).";
+  if (/at least 6/i.test(msg)) return "La contraseña debe tener al menos 6 caracteres.";
+  if (/rate limit/i.test(msg)) return "Demasiados intentos. Espera un momento.";
+  return `No se pudo completar: ${msg}`;
+}
+
+export default function Acceso() {
+  const [crear, setCrear] = useState(false);
+  const [correo, setCorreo] = useState("");
+  const [clave, setClave] = useState("");
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+    setCargando(true);
+    if (crear) {
+      const { data, error: err } = await supabase.auth.signUp({
+        email: correo.trim(),
+        password: clave,
+      });
+      if (err) setError(traducir(err.message));
+      else if (!data.session)
+        setInfo("Cuenta creada. Revisa tu correo para confirmarla y luego inicia sesión.");
+    } else {
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: correo.trim(),
+        password: clave,
+      });
+      if (err) setError(traducir(err.message));
+    }
+    setCargando(false);
+  }
+
+  const campo =
+    "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-acento focus:ring-2 focus:ring-acento/30";
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5 py-8">
+      <div className="mb-8 flex items-center gap-3">
+        <svg viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Logotipo">
+          <rect width="32" height="32" rx="9" fill="#3B5BDB" />
+          <path
+            d="M14.5 11.5l1.2-1.2a3.5 3.5 0 015 5l-1.2 1.2M17.5 20.5l-1.2 1.2a3.5 3.5 0 01-5-5l1.2-1.2M13.5 18.5l5-5"
+            stroke="#fff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+          />
+        </svg>
+        <h1 className="text-3xl font-semibold tracking-tight">Mis enlaces</h1>
+      </div>
+
+      <form onSubmit={enviar} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 className="text-xl font-semibold">
+          {crear ? "Crear cuenta" : "Iniciar sesión"}
+        </h2>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Correo</span>
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            value={correo}
+            onChange={(ev) => setCorreo(ev.target.value)}
+            className={campo}
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium">Contraseña</span>
+          <input
+            type="password"
+            required
+            minLength={6}
+            autoComplete={crear ? "new-password" : "current-password"}
+            value={clave}
+            onChange={(ev) => setClave(ev.target.value)}
+            className={campo}
+          />
+        </label>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {info && <p className="text-sm text-green-700">{info}</p>}
+        <button
+          type="submit"
+          disabled={cargando}
+          className="w-full rounded-full bg-acento px-5 py-3 font-medium text-white disabled:opacity-50"
+        >
+          {cargando ? "Un momento..." : crear ? "Crear cuenta" : "Entrar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setCrear(!crear);
+            setError("");
+            setInfo("");
+          }}
+          className="w-full text-sm text-acento"
+        >
+          {crear ? "Ya tengo cuenta: iniciar sesión" : "No tengo cuenta: crear una"}
+        </button>
+      </form>
+    </main>
+  );
+}
