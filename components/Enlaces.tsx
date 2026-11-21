@@ -367,7 +367,7 @@ export default function Enlaces({
         </svg>
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Mis enlaces
+            Mis Enlaces
           </h1>
           <p className="text-sm text-slate-600 sm:text-base">
             Las páginas web que quieres volver a visitar.

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import CampoClave from "@/components/CampoClave";
+import GuiaInicio from "@/components/GuiaInicio";
+import IconosSitios from "@/components/IconosSitios";
 
 type Modo = "entrar" | "crear" | "olvide";
 
@@ -65,8 +67,10 @@ export default function Acceso() {
   const boton = { entrar: "Entrar", crear: "Crear cuenta", olvide: "Enviar enlace" }[modo];
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5 py-8">
-      <div className="mb-8 flex items-center gap-3">
+    <div className="flex min-h-screen flex-col">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-8">
+      <div className="grid grid-cols-1 justify-items-center gap-6 lg:grid-cols-[auto_24rem_auto] lg:justify-center lg:gap-x-14">
+      <div className="flex w-full max-w-sm items-center gap-3 lg:col-start-2 lg:row-start-1 lg:max-w-none">
         <svg viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Logotipo">
           <rect width="32" height="32" rx="9" fill="#3B5BDB" />
           <path
@@ -77,10 +81,10 @@ export default function Acceso() {
             fill="none"
           />
         </svg>
-        <h1 className="text-3xl font-semibold tracking-tight">Mis enlaces</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Mis Enlaces</h1>
       </div>
 
-      <form onSubmit={enviar} className="space-y-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <form onSubmit={enviar} className="w-full max-w-sm space-y-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200 lg:col-start-2 lg:row-start-2 lg:max-w-none">
         <h2 className="text-xl font-semibold">{titulo}</h2>
         {modo === "olvide" && (
           <p className="text-sm text-slate-600">
@@ -129,6 +133,26 @@ export default function Acceso() {
           {modo === "entrar" ? "No tengo cuenta: crear una" : "Volver a iniciar sesión"}
         </button>
       </form>
+      <div className="w-full max-w-[17rem] lg:col-start-1 lg:row-start-2 lg:w-[17rem] lg:self-center">
+        <GuiaInicio />
+      </div>
+      <div className="lg:col-start-3 lg:row-start-2 lg:self-center">
+        <IconosSitios />
+      </div>
+      </div>
     </main>
+    <footer className="bg-slate-800 px-5 py-5 text-center text-sm text-white">
+      Mi App de Enlaces está creada con el apoyo de Claude Code · Mi GitHub:{" "}
+      <a
+        href="https://github.com/JoseAndradeG"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline underline-offset-2"
+      >
+        https://github.com/JoseAndradeG
+      </a>{" "}
+      ©
+    </footer>
+    </div>
   );
 }

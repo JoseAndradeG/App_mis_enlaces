@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Mis enlaces",
+  title: "Mis Enlaces",
   description: "Guarda y ordena las páginas web que te interesan.",
 };
 
