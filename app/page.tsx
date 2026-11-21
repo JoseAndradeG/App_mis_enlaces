@@ -5,10 +5,14 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, configurado } from "@/lib/supabase";
 import Acceso from "@/components/Acceso";
 import Enlaces from "@/components/Enlaces";
+import NuevaClave from "@/components/NuevaClave";
 
 export default function Inicio() {
   const [sesion, setSesion] = useState<Session | null>(null);
   const [listo, setListo] = useState(false);
+  const [recuperando, setRecuperando] = useState(
+    () => typeof window !== "undefined" && window.location.hash.includes("type=recovery")
+  );
 
   useEffect(() => {
     if (!configurado) {
@@ -19,8 +23,9 @@ export default function Inicio() {
       setSesion(data.session);
       setListo(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_evento, s) => {
+    const { data } = supabase.auth.onAuthStateChange((evento, s) => {
       setSesion(s);
+      if (evento === "PASSWORD_RECOVERY") setRecuperando(true);
     });
     return () => data.subscription.unsubscribe();
   }, []);
@@ -40,6 +45,16 @@ export default function Inicio() {
   }
   if (!listo) return null;
   if (!sesion) return <Acceso />;
+  if (recuperando) {
+    return (
+      <NuevaClave
+        onListo={() => {
+          window.history.replaceState(null, "", window.location.pathname);
+          setRecuperando(false);
+        }}
+      />
+    );
+  }
   return (
     <Enlaces
       key={sesion.user.id}
