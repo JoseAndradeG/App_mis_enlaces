@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import CampoClave from "@/components/CampoClave";
+import BotonTema from "@/components/BotonTema";
 import GuiaInicio from "@/components/GuiaInicio";
 import IconosSitios from "@/components/IconosSitios";
 
@@ -67,7 +68,10 @@ export default function Acceso() {
   const boton = { entrar: "Entrar", crear: "Crear cuenta", olvide: "Enviar enlace" }[modo];
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="relative flex min-h-screen flex-col">
+    <div className="absolute right-4 top-4 z-10">
+      <BotonTema />
+    </div>
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-8">
       <div className="grid grid-cols-1 justify-items-center gap-6 lg:grid-cols-[auto_24rem_auto] lg:justify-center lg:gap-x-14">
       <div className="flex w-full max-w-sm items-center gap-3 lg:col-start-2 lg:row-start-1 lg:max-w-none">

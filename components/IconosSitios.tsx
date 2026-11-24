@@ -15,7 +15,7 @@ function IconoSitio({ nombre, dominio }: { nombre: string; dominio: string }) {
   const [fallo, setFallo] = useState(false);
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+      <div className="flex h-20 w-20 items-center justify-center rounded-2xl tema-fijo bg-white shadow-sm ring-1 ring-slate-200">
         {fallo ? (
           <span className="text-2xl font-semibold text-slate-500">
             {nombre.charAt(0)}

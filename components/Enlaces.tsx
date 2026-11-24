@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import BotonTema from "@/components/BotonTema";
 
 type Enlace = {
   id: string;
@@ -72,7 +73,7 @@ function Icono({ url, nombre }: { url: string; nombre: string }) {
       width={36}
       height={36}
       onError={() => setFallo(true)}
-      className="h-9 w-9 shrink-0 rounded-lg bg-slate-100 object-contain p-1"
+      className="h-9 w-9 shrink-0 rounded-lg bg-white tema-fijo object-contain p-1"
     />
   );
 }
@@ -115,6 +116,7 @@ export default function Enlaces({
   const [trabajando, setTrabajando] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [porBorrar, setPorBorrar] = useState<Enlace | null>(null);
+  const [editando, setEditando] = useState<Enlace | null>(null);
   const pedidos = useRef<Set<string>>(new Set());
 
   const [url, setUrl] = useState("");
@@ -206,6 +208,7 @@ export default function Enlaces({
     .sort((a, b) => b.activada.localeCompare(a.activada));
 
   function abrirFormulario() {
+    setEditando(null);
     setUrl("");
     setNombre("");
     setCategoria(CATEGORIAS_BASE[0]);
@@ -214,8 +217,108 @@ export default function Enlaces({
     setAbierto(true);
   }
 
+  function abrirEditar(e: Enlace) {
+    setEditando(e);
+    setUrl(e.url);
+    setNombre(e.nombre);
+    setCategoria(e.categoria);
+    setCategoriaNueva("");
+    setError("");
+    setAbierto(true);
+  }
+
+  async function guardarEdicion() {
+    if (!editando) return;
+    const urlLimpia = normalizarUrl(url);
+    if (!urlLimpia) {
+      setError("La dirección no parece válida. Ejemplo: www.ejemplo.com");
+      return;
+    }
+    const categoriaFinal = (categoria === NUEVA ? categoriaNueva : categoria).trim();
+    if (!categoriaFinal) {
+      setError("Escribe el nombre de la nueva categoría.");
+      return;
+    }
+    setTrabajando(true);
+    setError("");
+    let listaCats = cats;
+    let cat = cats.find((c) => c.nombre.toLowerCase() === categoriaFinal.toLowerCase());
+    if (!cat) {
+      const r0 = await supabase
+        .from("categorias")
+        .insert({ nombre: categoriaFinal, user_id: usuarioId })
+        .select("id,nombre,activada_en")
+        .single();
+      if (r0.error || !r0.data) {
+        setError("No pude crear la categoría. Intenta de nuevo.");
+        setTrabajando(false);
+        return;
+      }
+      cat = r0.data as CatFila;
+      listaCats = [...cats, cat];
+    }
+    const catFinal: CatFila = cat;
+    const urlCambio = urlLimpia !== editando.url;
+    const nombreFinal = nombre.trim() || dominio(urlLimpia);
+    const r = await supabase
+      .from("enlaces")
+      .update({
+        url: urlLimpia,
+        nombre: nombreFinal,
+        categoria_id: catFinal.id,
+        ...(urlCambio ? { resumen: null } : {}),
+      })
+      .eq("id", editando.id);
+    if (r.error) {
+      setError("No pude guardar los cambios. Intenta de nuevo.");
+      setTrabajando(false);
+      return;
+    }
+    if (catFinal.id !== editando.categoriaId) {
+      const ahora = new Date().toISOString();
+      const nuevaVacia = !enlaces.some((x) => x.categoriaId === catFinal.id);
+      const antiguaVacia = !enlaces.some(
+        (x) => x.id !== editando.id && x.categoriaId === editando.categoriaId
+      );
+      if (nuevaVacia)
+        await supabase.from("categorias").update({ activada_en: ahora }).eq("id", catFinal.id);
+      if (antiguaVacia)
+        await supabase.from("categorias").update({ activada_en: null }).eq("id", editando.categoriaId);
+      listaCats = listaCats.map((c) =>
+        c.id === catFinal.id && nuevaVacia
+          ? { ...c, activada_en: ahora }
+          : c.id === editando.categoriaId && antiguaVacia
+          ? { ...c, activada_en: null }
+          : c
+      );
+    }
+    if (urlCambio) pedidos.current.delete(editando.id);
+    setCats(listaCats);
+    setEnlaces((prev) =>
+      prev.map((x) =>
+        x.id === editando.id
+          ? {
+              ...x,
+              url: urlLimpia,
+              nombre: nombreFinal,
+              categoria: catFinal.nombre,
+              categoriaId: catFinal.id,
+              resumen: urlCambio ? undefined : x.resumen,
+            }
+          : x
+      )
+    );
+    setTrabajando(false);
+    setAbierto(false);
+    setEditando(null);
+  }
+
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
+    if (editando) {
+      await guardarEdicion();
+      return;
+    }
     const urlLimpia = normalizarUrl(url);
     if (!urlLimpia) {
       setError("La dirección no parece válida. Ejemplo: www.ejemplo.com");
@@ -387,6 +490,7 @@ export default function Enlaces({
           >
             Agregar enlace
           </button>
+          <BotonTema />
         </div>
       </header>
 
@@ -434,21 +538,45 @@ export default function Enlaces({
             </h2>
             <ul className="space-y-2">
               {g.items.map((e) => (
-                <li
-                  key={e.id}
-                  className="flex items-start gap-1 rounded-xl bg-slate-50 pr-1 ring-1 ring-slate-100"
-                >
+                <li key={e.id} className="rounded-xl bg-slate-50 ring-1 ring-slate-100">
+                  <div className="flex items-center gap-3 px-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => abrirEditar(e)}
+                      aria-label={`Editar ${e.nombre}`}
+                      className="group relative rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-acento"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+                      </svg>
+                      <span className="pointer-events-none absolute -top-8 left-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
+                        Editar
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPorBorrar(e)}
+                      aria-label={`Borrar ${e.nombre}`}
+                      className="group relative rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
+                      </svg>
+                      <span className="pointer-events-none absolute -top-8 left-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
+                        Borrar
+                      </span>
+                    </button>
+                  </div>
                   <a
                     href={e.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex min-w-0 flex-1 items-start gap-3 p-3"
+                    className="flex min-w-0 items-start gap-3 px-3 pb-3 pt-1"
                   >
-                    <Icono url={e.url} nombre={e.nombre} />
+                    <Icono key={e.url} url={e.url} nombre={e.nombre} />
                     <span className="min-w-0">
-                      <span className="block truncate font-medium">
-                        {e.nombre}
-                      </span>
+                      <span className="block truncate font-medium">{e.nombre}</span>
                       <span className="block truncate text-sm text-acento">
                         {dominio(e.url)}
                       </span>
@@ -459,24 +587,6 @@ export default function Enlaces({
                       )}
                     </span>
                   </a>
-                  <button
-                    onClick={() => setPorBorrar(e)}
-                    aria-label={`Borrar ${e.nombre}`}
-                    className="mt-2 rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="18"
-                      height="18"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
-                    </svg>
-                  </button>
                 </li>
               ))}
             </ul>
@@ -525,7 +635,9 @@ export default function Enlaces({
             onClick={(ev) => ev.stopPropagation()}
             className="w-full max-w-md space-y-4 rounded-t-3xl bg-white p-6 sm:rounded-3xl"
           >
-            <h2 className="text-xl font-semibold">Agregar enlace</h2>
+            <h2 className="text-xl font-semibold">
+              {editando ? "Editar enlace" : "Agregar enlace"}
+            </h2>
 
             <label className="block">
               <span className="mb-1 block text-sm font-medium">
@@ -592,7 +704,7 @@ export default function Enlaces({
                 disabled={trabajando}
                 className="flex-1 rounded-full bg-acento px-5 py-3 font-medium text-white disabled:opacity-50"
               >
-                Guardar enlace
+                {editando ? "Guardar cambios" : "Guardar enlace"}
               </button>
             </div>
           </form>
