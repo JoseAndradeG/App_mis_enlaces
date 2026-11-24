@@ -117,6 +117,15 @@ export default function Enlaces({
   const [abierto, setAbierto] = useState(false);
   const [porBorrar, setPorBorrar] = useState<Enlace | null>(null);
   const [editando, setEditando] = useState<Enlace | null>(null);
+  const claveContraidos = `mis-enlaces:contraidos:${usuarioId}`;
+  const [contraidos, setContraidos] = useState<string[]>(() => {
+    try {
+      const v = localStorage.getItem(claveContraidos);
+      return v ? (JSON.parse(v) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const pedidos = useRef<Set<string>>(new Set());
 
   const [url, setUrl] = useState("");
@@ -215,6 +224,33 @@ export default function Enlaces({
     setCategoriaNueva("");
     setError("");
     setAbierto(true);
+  }
+
+  function cambiarContraidos(siguiente: string[]) {
+    setContraidos(siguiente);
+    try {
+      localStorage.setItem(claveContraidos, JSON.stringify(siguiente));
+    } catch {
+      // si no se puede guardar, el cambio vale solo para esta visita
+    }
+  }
+
+  const todosContraidos = (items: Enlace[]) =>
+    items.every((i) => contraidos.includes(i.id));
+
+  function alternar(id: string) {
+    cambiarContraidos(
+      contraidos.includes(id) ? contraidos.filter((x) => x !== id) : [...contraidos, id]
+    );
+  }
+
+  function alternarGrupo(items: Enlace[]) {
+    const ids = items.map((i) => i.id);
+    cambiarContraidos(
+      todosContraidos(items)
+        ? contraidos.filter((x) => !ids.includes(x))
+        : Array.from(new Set([...contraidos, ...ids]))
+    );
   }
 
   function abrirEditar(e: Enlace) {
@@ -386,6 +422,7 @@ export default function Enlaces({
     }
     const quedan = enlaces.filter((e) => e.id !== id);
     setEnlaces(quedan);
+    cambiarContraidos(contraidos.filter((x) => x !== id));
     if (!quedan.some((e) => e.categoriaId === categoriaId)) {
       await supabase.from("categorias").update({ activada_en: null }).eq("id", categoriaId);
       setCats((prev) =>
@@ -530,16 +567,33 @@ export default function Enlaces({
             key={g.nombre}
             className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200"
           >
-            <h2 className="mb-3 text-lg font-semibold">
-              {g.nombre}{" "}
-              <span className="text-sm font-normal text-slate-500">
-                ({g.items.length})
-              </span>
-            </h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">
+                {g.nombre}{" "}
+                <span className="text-sm font-normal text-slate-500">
+                  ({g.items.length})
+                </span>
+              </h2>
+              {g.items.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(g.items)}
+                  aria-label={todosContraidos(g.items) ? "Expandir todos" : "Contraer todos"}
+                  className="group relative rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-acento"
+                >
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={todosContraidos(g.items) ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
+                  </svg>
+                  <span className="pointer-events-none absolute -top-8 right-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
+                    {todosContraidos(g.items) ? "Expandir todos" : "Contraer todos"}
+                  </span>
+                </button>
+              )}
+            </div>
             <ul className="space-y-2">
               {g.items.map((e) => (
                 <li key={e.id} className="rounded-xl bg-slate-50 ring-1 ring-slate-100">
-                  <div className="flex items-center gap-3 px-3 pt-2">
+                  <div className="flex items-center justify-end gap-3 px-3 pt-2">
                     <button
                       type="button"
                       onClick={() => abrirEditar(e)}
@@ -550,9 +604,7 @@ export default function Enlaces({
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
                       </svg>
-                      <span className="pointer-events-none absolute -top-8 left-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
-                        Editar
-                      </span>
+                      <span className="pointer-events-none absolute -top-8 right-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">Editar</span>
                     </button>
                     <button
                       type="button"
@@ -563,10 +615,23 @@ export default function Enlaces({
                       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
                       </svg>
-                      <span className="pointer-events-none absolute -top-8 left-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
-                        Borrar
-                      </span>
+                      <span className="pointer-events-none absolute -top-8 right-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">Borrar</span>
                     </button>
+                    {g.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => alternar(e.id)}
+                        aria-label={contraidos.includes(e.id) ? `Expandir ${e.nombre}` : `Contraer ${e.nombre}`}
+                        className="group relative rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-acento"
+                      >
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d={contraidos.includes(e.id) ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"} />
+                        </svg>
+                        <span className="pointer-events-none absolute -top-8 right-0 z-10 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1 text-xs text-white opacity-0 shadow transition-opacity group-hover:opacity-100">
+                          {contraidos.includes(e.id) ? "Expandir" : "Contraer"}
+                        </span>
+                      </button>
+                    )}
                   </div>
                   <a
                     href={e.url}
@@ -580,7 +645,7 @@ export default function Enlaces({
                       <span className="block truncate text-sm text-acento">
                         {dominio(e.url)}
                       </span>
-                      {e.resumen && (
+                      {e.resumen && !contraidos.includes(e.id) && (
                         <span className="mt-1 line-clamp-2 block text-sm text-slate-600">
                           {e.resumen}
                         </span>
